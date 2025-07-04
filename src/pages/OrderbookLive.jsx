@@ -6,7 +6,7 @@ const symbols = [
 ];
 
 const OrderbookLive = () => {
-  const [buyData, setBuyData] = useState({});
+  const [orderbookData, setOrderbookData] = useState({});
   const wsRef = useRef({});
   const prevBidsRef = useRef({});
 
@@ -17,36 +17,38 @@ const OrderbookLive = () => {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log("RECEIVED:", symbol, data); // ✅ Tambahkan ini
-        const currentBids = data.bids;
-        const prevBids = prevBidsRef.current[symbol] || [];
+        const currentBids = data.bids || [];
+        const currentAsks = data.asks || [];
 
-        // Hitung total buy
         const totalBuy = currentBids.reduce(
           (acc, [price, qty]) => acc + parseFloat(price) * parseFloat(qty),
           0
         );
+        const totalSell = currentAsks.reduce(
+          (acc, [price, qty]) => acc + parseFloat(price) * parseFloat(qty),
+          0
+        );
 
-        // Deteksi spoofing: perubahan volume besar dalam 1 detik
+        // Anti-spoofing
+        const prevBids = prevBidsRef.current[symbol] || [];
         const prevTotalBuy = prevBids.reduce(
           (acc, [price, qty]) => acc + parseFloat(price) * parseFloat(qty),
           0
         );
-        const volumeDiff = Math.abs(totalBuy - prevTotalBuy);
-        const volumeChangePercent = (volumeDiff / (prevTotalBuy || 1)) * 100;
-
-        const isSpoofing = volumeChangePercent > 40; // ambang batas 40%
+        const diff = Math.abs(totalBuy - prevTotalBuy);
+        const diffPercent = (diff / (prevTotalBuy || 1)) * 100;
+        const isSpoofing = diffPercent > 40;
 
         if (!isSpoofing) {
-          setBuyData((prev) => ({
+          setOrderbookData((prev) => ({
             ...prev,
             [symbol]: {
               totalBuy,
-              bids: currentBids
+              totalSell,
+              bids: currentBids,
+              asks: currentAsks
             }
           }));
-
-           console.log("TotalBuy Updated:", totalBuy, "Symbol:", symbol); // ⬅️ Tambahin di sini
         }
 
         prevBidsRef.current[symbol] = currentBids;
@@ -64,27 +66,38 @@ const OrderbookLive = () => {
     };
   }, []);
 
-  const sortedData = Object.entries(buyData)
+  const sortedData = Object.entries(orderbookData)
     .sort(([, a], [, b]) => b.totalBuy - a.totalBuy)
     .slice(0, 10);
 
   return (
-    <div className="p-4">
+    <div className="p-4 text-gray-900">
       <h2 className="text-xl font-bold mb-4">📊 Top 10 Antrian Beli (Realtime, Anti-Spoofing)</h2>
-      {sortedData.map(([symbol, data]) => (
-        <div key={symbol} className="mb-2">
-          <div className="font-medium uppercase mb-1">{symbol}</div>
-          <div className="w-full h-4 bg-gray-200 rounded">
-            <div
-              className="h-4 bg-green-500 rounded"
-              style={{ width: `${Math.min(data.totalBuy / sortedData[0][1].totalBuy * 100, 100)}%` }}
-            ></div>
+      {sortedData.map(([symbol, data]) => {
+        const total = data.totalBuy + data.totalSell;
+        const buyPercent = ((data.totalBuy / total) * 100).toFixed(1);
+        const sellPercent = ((data.totalSell / total) * 100).toFixed(1);
+
+        return (
+          <div key={symbol} className="mb-4">
+            <div className="font-semibold uppercase mb-1">{symbol}</div>
+            <div className="w-full h-4 bg-gray-200 rounded overflow-hidden flex">
+              <div
+                className="bg-green-500 h-4"
+                style={{ width: `${buyPercent}%` }}
+              ></div>
+              <div
+                className="bg-red-500 h-4"
+                style={{ width: `${sellPercent}%` }}
+              ></div>
+            </div>
+            <div className="text-sm text-gray-700 mt-1 flex justify-between">
+              <span>Buy: {buyPercent}%</span>
+              <span>Sell: {sellPercent}%</span>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
-            Total Buy: ${data.totalBuy.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
