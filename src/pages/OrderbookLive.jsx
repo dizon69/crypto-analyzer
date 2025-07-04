@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 const OrderbookAnalyzer = () => {
   const [topCoins, setTopCoins] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [recentAlertCoins, setRecentAlertCoins] = useState([]);
   const dataRef = useRef({});
   const intervalRef = useRef(null);
   const streamRef = useRef({});
@@ -28,7 +29,7 @@ const OrderbookAnalyzer = () => {
           console.error(`${symbol} WebSocket error.`);
           if (!reconnectingRef.current[symbol]) {
             reconnectingRef.current[symbol] = true;
-            setTimeout(connect, 5000); // delay reconnect
+            setTimeout(connect, 5000);
           }
         };
 
@@ -36,7 +37,7 @@ const OrderbookAnalyzer = () => {
           console.warn(`${symbol} WebSocket closed.`);
           if (!reconnectingRef.current[symbol]) {
             reconnectingRef.current[symbol] = true;
-            setTimeout(connect, 5000); // delay reconnect
+            setTimeout(connect, 5000);
           }
         };
 
@@ -55,7 +56,7 @@ const OrderbookAnalyzer = () => {
           dataRef.current[symbol].push(entry);
           dataRef.current[symbol] = dataRef.current[symbol]
             .filter((d) => now - d.time <= 300000)
-            .slice(-300); // keep only last 300 entries (1 entry per second)
+            .slice(-300);
         };
       };
 
@@ -64,6 +65,9 @@ const OrderbookAnalyzer = () => {
 
     intervalRef.current = setInterval(() => {
       const stats = [];
+      const updatedAlerts = [];
+      const newAlertedCoins = [];
+
       for (const symbol of symbols) {
         const data = dataRef.current[symbol] || [];
         if (data.length < 10) continue;
@@ -77,14 +81,15 @@ const OrderbookAnalyzer = () => {
 
         const lastRatio = topCoins.find((c) => c.symbol === symbol)?.ratio || 0;
         if (lastRatio > 0 && ratio > lastRatio * 2) {
-          setAlerts((prev) => [
-            `🔥 ${symbol.toUpperCase()} Buy/Sell Ratio Naik 2x! (${lastRatio.toFixed(2)} → ${ratio.toFixed(2)})`,
-            ...prev.slice(0, 4)
-          ]);
+          updatedAlerts.push(`🔥 ${symbol.toUpperCase()} Buy/Sell Ratio Naik 2x! (${lastRatio.toFixed(2)} → ${ratio.toFixed(2)})`);
+          newAlertedCoins.push(symbol);
         }
 
         stats.push({ symbol, totalBuy, totalSell, ratio });
       }
+
+      setAlerts((prev) => [...updatedAlerts, ...prev].slice(0, 5));
+      setRecentAlertCoins(newAlertedCoins);
 
       const sorted = stats.sort((a, b) => b.ratio - a.ratio).slice(0, 10);
       setTopCoins(sorted);
@@ -94,7 +99,7 @@ const OrderbookAnalyzer = () => {
       Object.values(streamRef.current).forEach((ws) => ws.close());
       clearInterval(intervalRef.current);
     };
-  }, []); // Hapus dependency topCoins
+  }, []);
 
   return (
     <div className="p-4 text-gray-900">
@@ -121,7 +126,10 @@ const OrderbookAnalyzer = () => {
           <tbody>
             {topCoins.map((coin) => (
               <tr key={coin.symbol} className="border-b">
-                <td className="px-2 py-1 font-medium uppercase">{coin.symbol}</td>
+                <td className="px-2 py-1 font-medium uppercase">
+                  {coin.symbol}
+                  {recentAlertCoins.includes(coin.symbol) && <span className="ml-1 text-red-500">🔥</span>}
+                </td>
                 <td className="px-2 py-1 text-right">{coin.totalBuy.toLocaleString("en-US", { maximumFractionDigits: 0 })}</td>
                 <td className="px-2 py-1 text-right">{coin.totalSell.toLocaleString("en-US", { maximumFractionDigits: 0 })}</td>
                 <td className="px-2 py-1 text-right">{coin.ratio.toFixed(2)}</td>
