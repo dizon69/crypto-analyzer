@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/crypto-analyzer/static/css/main.1c1bb4df.css",
-    "main.js": "/crypto-analyzer/static/js/main.071296bb.js",
+    "main.css": "/crypto-analyzer/static/css/main.fc84c6dc.css",
+    "main.js": "/crypto-analyzer/static/js/main.3b9177f7.js",
     "static/js/453.a6799694.chunk.js": "/crypto-analyzer/static/js/453.a6799694.chunk.js",
     "index.html": "/crypto-analyzer/index.html",
-    "main.1c1bb4df.css.map": "/crypto-analyzer/static/css/main.1c1bb4df.css.map",
-    "main.071296bb.js.map": "/crypto-analyzer/static/js/main.071296bb.js.map",
+    "main.fc84c6dc.css.map": "/crypto-analyzer/static/css/main.fc84c6dc.css.map",
+    "main.3b9177f7.js.map": "/crypto-analyzer/static/js/main.3b9177f7.js.map",
     "453.a6799694.chunk.js.map": "/crypto-analyzer/static/js/453.a6799694.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.1c1bb4df.css",
-    "static/js/main.071296bb.js"
+    "static/css/main.fc84c6dc.css",
+    "static/js/main.3b9177f7.js"
   ]
 }
