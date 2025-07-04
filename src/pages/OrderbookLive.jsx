@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 
 const OrderbookAnalyzer = () => {
   const [topCoins, setTopCoins] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const dataRef = useRef({});
   const intervalRef = useRef(null);
   const streamRef = useRef({});
@@ -13,24 +14,38 @@ const OrderbookAnalyzer = () => {
 
   useEffect(() => {
     symbols.forEach((symbol) => {
-      const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@depth10@100ms`);
-      streamRef.current[symbol] = ws;
+      const connect = () => {
+        const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@depth10@100ms`);
+        streamRef.current[symbol] = ws;
 
-      ws.onmessage = (event) => {
-        const { bids, asks } = JSON.parse(event.data);
-        const totalBuy = bids.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
-        const totalSell = asks.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
+        ws.onopen = () => console.log(`${symbol} WebSocket connected.`);
+        ws.onerror = () => {
+          console.error(`${symbol} WebSocket error.`);
+          setTimeout(connect, 1000); // reconnect after 1s
+        };
+        ws.onclose = () => {
+          console.warn(`${symbol} WebSocket closed.`);
+          setTimeout(connect, 1000); // reconnect after 1s
+        };
 
-        const now = Date.now();
-        const entry = { time: now, buy: totalBuy, sell: totalSell };
+        ws.onmessage = (event) => {
+          const { bids, asks } = JSON.parse(event.data);
+          const totalBuy = bids.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
+          const totalSell = asks.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
 
-        if (!dataRef.current[symbol]) {
-          dataRef.current[symbol] = [];
-        }
+          const now = Date.now();
+          const entry = { time: now, buy: totalBuy, sell: totalSell };
 
-        dataRef.current[symbol].push(entry);
-        dataRef.current[symbol] = dataRef.current[symbol].filter((d) => now - d.time <= 300000);
+          if (!dataRef.current[symbol]) {
+            dataRef.current[symbol] = [];
+          }
+
+          dataRef.current[symbol].push(entry);
+          dataRef.current[symbol] = dataRef.current[symbol].filter((d) => now - d.time <= 300000);
+        };
       };
+
+      connect();
     });
 
     intervalRef.current = setInterval(() => {
@@ -43,6 +58,19 @@ const OrderbookAnalyzer = () => {
         const totalSell = data.reduce((sum, d) => sum + d.sell, 0);
         const ratio = totalSell > 0 ? totalBuy / totalSell : 0;
 
+        // Filter volume minimum
+        const volumeUSD = totalBuy + totalSell;
+        if (volumeUSD < 1_000_000) continue;
+
+        // Notifikasi jika rasio naik signifikan
+        const lastRatio = topCoins.find((c) => c.symbol === symbol)?.ratio || 0;
+        if (lastRatio > 0 && ratio > lastRatio * 2) {
+          setAlerts((prev) => [
+            `🔥 ${symbol.toUpperCase()} Buy/Sell Ratio Naik 2x! (${lastRatio.toFixed(2)} → ${ratio.toFixed(2)})`,
+            ...prev.slice(0, 4)
+          ]);
+        }
+
         stats.push({ symbol, totalBuy, totalSell, ratio });
       }
 
@@ -54,11 +82,20 @@ const OrderbookAnalyzer = () => {
       Object.values(streamRef.current).forEach((ws) => ws.close());
       clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [topCoins]);
 
   return (
     <div className="p-4 text-gray-900">
       <h2 className="text-xl font-bold mb-4">📈 Top 10 Coin BUY/SELL Ratio (5 Menit)</h2>
+
+      {alerts.length > 0 && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4">
+          {alerts.map((alert, idx) => (
+            <div key={idx}>⚠️ {alert}</div>
+          ))}
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="table-auto w-full text-sm">
           <thead className="bg-gray-100">
