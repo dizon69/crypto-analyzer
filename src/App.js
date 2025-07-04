@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import VolumePage from "./pages/VolumePage";
 import VolatilitasPage from "./pages/VolatilitasPage";
