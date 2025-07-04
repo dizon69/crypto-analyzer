@@ -11,11 +11,13 @@ const OrderbookLive = () => {
   const prevBidsRef = useRef({});
 
   useEffect(() => {
+    console.log("WebSocket initializing...");
     symbols.forEach((symbol) => {
       const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@depth10@100ms`);
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        console.log("RECEIVED:", symbol, data); // ✅ Tambahkan ini
         const currentBids = data.bids;
         const prevBids = prevBidsRef.current[symbol] || [];
 
@@ -43,6 +45,8 @@ const OrderbookLive = () => {
               bids: currentBids
             }
           }));
+
+           console.log("TotalBuy Updated:", totalBuy, "Symbol:", symbol); // ⬅️ Tambahin di sini
         }
 
         prevBidsRef.current[symbol] = currentBids;
