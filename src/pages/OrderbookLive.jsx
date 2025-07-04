@@ -6,14 +6,12 @@ const OrderbookAnalyzer = () => {
   const intervalRef = useRef(null);
   const streamRef = useRef({});
 
-  // Coin symbols (top coins only, spot market only)
   const symbols = [
     "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
     "xrpusdt", "dogeusdt", "maticusdt", "ltcusdt", "linkusdt"
   ];
 
   useEffect(() => {
-    // Connect WebSocket for each symbol
     symbols.forEach((symbol) => {
       const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@depth10@100ms`);
       streamRef.current[symbol] = ws;
@@ -30,18 +28,16 @@ const OrderbookAnalyzer = () => {
           dataRef.current[symbol] = [];
         }
 
-        // Push current entry and clean up old entries > 5m
         dataRef.current[symbol].push(entry);
         dataRef.current[symbol] = dataRef.current[symbol].filter((d) => now - d.time <= 300000);
       };
     });
 
-    // Update UI every 1s
     intervalRef.current = setInterval(() => {
       const stats = [];
       for (const symbol of symbols) {
         const data = dataRef.current[symbol] || [];
-        if (data.length < 10) continue; // skip coin with not enough data
+        if (data.length < 10) continue;
 
         const totalBuy = data.reduce((sum, d) => sum + d.buy, 0);
         const totalSell = data.reduce((sum, d) => sum + d.sell, 0);
@@ -55,7 +51,6 @@ const OrderbookAnalyzer = () => {
     }, 1000);
 
     return () => {
-      // Cleanup on unmount
       Object.values(streamRef.current).forEach((ws) => ws.close());
       clearInterval(intervalRef.current);
     };
@@ -85,6 +80,35 @@ const OrderbookAnalyzer = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-2">📊 Buy vs Sell Chart</h3>
+        {topCoins.map((coin) => {
+          const total = coin.totalBuy + coin.totalSell;
+          const buyPercent = ((coin.totalBuy / total) * 100).toFixed(1);
+          const sellPercent = ((coin.totalSell / total) * 100).toFixed(1);
+
+          return (
+            <div key={coin.symbol} className="mb-4">
+              <div className="font-medium uppercase mb-1">{coin.symbol}</div>
+              <div className="w-full h-4 bg-gray-200 rounded overflow-hidden flex">
+                <div
+                  className="bg-green-500 h-4"
+                  style={{ width: `${buyPercent}%` }}
+                ></div>
+                <div
+                  className="bg-red-500 h-4"
+                  style={{ width: `${sellPercent}%` }}
+                ></div>
+              </div>
+              <div className="text-sm text-gray-700 mt-1 flex justify-between">
+                <span>Buy: {buyPercent}%</span>
+                <span>Sell: {sellPercent}%</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
