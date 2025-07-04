@@ -13,6 +13,7 @@ function Layout() {
         <nav className="bg-gray-900 text-white w-48 flex flex-col justify-between p-4">
           <div className="flex flex-col space-y-4">
             <Link to="/aset" className="hover:text-yellow-400">Semua Aset</Link>
+            <Link to="/orderbook">Orderbook Realtime</Link>
             <Link to="/volume" className="hover:text-yellow-400">Volume</Link>
             <Link to="/volatilitas" className="hover:text-yellow-400">Volatilitas</Link>
             <Link to="/antrian" className="hover:text-yellow-400">Antrian</Link>

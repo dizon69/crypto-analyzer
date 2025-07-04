@@ -6,6 +6,7 @@ import VolatilitasPage from "./pages/VolatilitasPage";
 import AntrianPage from "./pages/AntrianPage";
 import SinyalPage from "./pages/SinyalPage";
 import AllAssetsPage from "./pages/AllAssetsPage";
+import OrderbookLive from "./pages/OrderbookLive"; // ✅ ini ditambahkan
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="antrian" element={<AntrianPage />} />
         <Route path="sinyal" element={<SinyalPage />} />
         <Route path="aset" element={<AllAssetsPage />} />
+        <Route path="orderbook" element={<OrderbookLive />} />
       </Route>
     </Routes>
   );
