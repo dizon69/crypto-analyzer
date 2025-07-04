@@ -16,8 +16,8 @@ function App() {
         <Route path="volatilitas" element={<VolatilitasPage />} />
         <Route path="antrian" element={<AntrianPage />} />
         <Route path="sinyal" element={<SinyalPage />} />
-        <Route path="aset" element={<AllAssetsPage />} />
-        <Route path="orderbook" element={<OrderbookLive />} />
+        <Route path="/aset" element={<AllAssetsPage />} />
+        <Route path="/orderbook" element={<OrderbookLive />} />
       </Route>
     </Routes>
   );
