@@ -6,6 +6,7 @@ const OrderbookAnalyzer = () => {
   const dataRef = useRef({});
   const intervalRef = useRef(null);
   const streamRef = useRef({});
+  const reconnectingRef = useRef({});
 
   const symbols = [
     "btcusdt", "ethusdt", "bnbusdt", "solusdt", "adausdt",
@@ -18,14 +19,25 @@ const OrderbookAnalyzer = () => {
         const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@depth10@100ms`);
         streamRef.current[symbol] = ws;
 
-        ws.onopen = () => console.log(`${symbol} WebSocket connected.`);
+        ws.onopen = () => {
+          console.log(`${symbol} WebSocket connected.`);
+          reconnectingRef.current[symbol] = false;
+        };
+
         ws.onerror = () => {
           console.error(`${symbol} WebSocket error.`);
-          setTimeout(connect, 1000); // reconnect after 1s
+          if (!reconnectingRef.current[symbol]) {
+            reconnectingRef.current[symbol] = true;
+            setTimeout(connect, 5000); // delay reconnect
+          }
         };
+
         ws.onclose = () => {
           console.warn(`${symbol} WebSocket closed.`);
-          setTimeout(connect, 1000); // reconnect after 1s
+          if (!reconnectingRef.current[symbol]) {
+            reconnectingRef.current[symbol] = true;
+            setTimeout(connect, 5000); // delay reconnect
+          }
         };
 
         ws.onmessage = (event) => {
@@ -41,7 +53,9 @@ const OrderbookAnalyzer = () => {
           }
 
           dataRef.current[symbol].push(entry);
-          dataRef.current[symbol] = dataRef.current[symbol].filter((d) => now - d.time <= 300000);
+          dataRef.current[symbol] = dataRef.current[symbol]
+            .filter((d) => now - d.time <= 300000)
+            .slice(-300); // keep only last 300 entries (1 entry per second)
         };
       };
 
@@ -58,11 +72,9 @@ const OrderbookAnalyzer = () => {
         const totalSell = data.reduce((sum, d) => sum + d.sell, 0);
         const ratio = totalSell > 0 ? totalBuy / totalSell : 0;
 
-        // Filter volume minimum
         const volumeUSD = totalBuy + totalSell;
         if (volumeUSD < 1_000_000) continue;
 
-        // Notifikasi jika rasio naik signifikan
         const lastRatio = topCoins.find((c) => c.symbol === symbol)?.ratio || 0;
         if (lastRatio > 0 && ratio > lastRatio * 2) {
           setAlerts((prev) => [
@@ -82,7 +94,7 @@ const OrderbookAnalyzer = () => {
       Object.values(streamRef.current).forEach((ws) => ws.close());
       clearInterval(intervalRef.current);
     };
-  }, [topCoins]);
+  }, []); // Hapus dependency topCoins
 
   return (
     <div className="p-4 text-gray-900">
